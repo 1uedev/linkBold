@@ -58,11 +58,58 @@
 
     textarea:focus { border-color: #0a66c2; }
 
+    /* ── Toggle ── */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 20px 0 4px;
+    }
+
+    .toggle-label {
+      font-size: 0.88rem;
+      color: #555;
+      user-select: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .toggle-label.active { color: #1a1a1a; font-weight: 600; }
+
+    .toggle-track {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      background: #0a66c2;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.25s;
+      flex-shrink: 0;
+    }
+
+    .toggle-track.serif { background: #7b5ea7; }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.25s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle-track.serif .toggle-thumb { transform: translateX(22px); }
+
+    /* ── Cards ── */
     .cards {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
-      margin-top: 20px;
+      margin-top: 16px;
     }
 
     @media (max-width: 620px) {
@@ -115,10 +162,7 @@
     .copy-btn:hover { background: #f0f0f0; border-color: #999; }
     .copy-btn.copied { border-color: #2e7d32; color: #2e7d32; }
 
-    .copy-icon {
-      width: 14px; height: 14px;
-      fill: currentColor;
-    }
+    .copy-icon { width: 14px; height: 14px; fill: currentColor; }
 
     footer {
       margin-top: 24px;
@@ -133,6 +177,15 @@
   <h2>LinkedIn Text in <strong>FETT</strong> und <em>Kursiv</em></h2>
   <h1>Gib hier deinen Text ein:</h1>
   <textarea id="input" placeholder="Das hier ist ein Test" autofocus></textarea>
+
+  <!-- Toggle -->
+  <div class="toggle-row">
+    <span class="toggle-label active" id="label-sans">Sans-Serif</span>
+    <div class="toggle-track" id="toggle" role="switch" aria-checked="false" tabindex="0" title="Schriftstil wechseln">
+      <div class="toggle-thumb"></div>
+    </div>
+    <span class="toggle-label" id="label-serif">Serif</span>
+  </div>
 
   <div class="cards">
     <div class="card card--bold">
@@ -167,59 +220,65 @@
 </div>
 
 <script>
-  // Unicode Mathematical Sans-Serif Symbols
-  // Sans-Serif Bold:        A=U+1D5D4, a=U+1D5EE, 0=U+1D7EC
-  // Sans-Serif Italic:      A=U+1D608, a=U+1D622
-  // Sans-Serif Bold Italic: A=U+1D63C, a=U+1D656
+  // ── Unicode code-point bases ──────────────────────────────────
+  const RANGES = {
+    sansSerif: {
+      boldUpper: 0x1D5D4, boldLower: 0x1D5EE, boldDigit: 0x1D7EC,
+      italicUpper: 0x1D608, italicLower: 0x1D622,
+      boldItalicUpper: 0x1D63C, boldItalicLower: 0x1D656,
+    },
+    serif: {
+      boldUpper: 0x1D400, boldLower: 0x1D41A, boldDigit: 0x1D7CE,
+      italicUpper: 0x1D434, italicLower: 0x1D44E,
+      boldItalicUpper: 0x1D468, boldItalicLower: 0x1D482,
+    }
+  };
 
-  const BOLD_UPPER  = 0x1D5D4;
-  const BOLD_LOWER  = 0x1D5EE;
-  const BOLD_DIGIT  = 0x1D7EC;
+  let style = 'sansSerif'; // current style
 
-  const ITALIC_UPPER = 0x1D608;
-  const ITALIC_LOWER = 0x1D622;
-
-  const BOLD_ITALIC_UPPER = 0x1D63C;
-  const BOLD_ITALIC_LOWER = 0x1D656;
-
-  function toCodePoint(base, charCode) {
-    return String.fromCodePoint(base + charCode);
-  }
+  function cp(base, offset) { return String.fromCodePoint(base + offset); }
 
   function convertChar(ch, mode) {
+    const r = RANGES[style];
     const upper = ch >= 'A' && ch <= 'Z';
     const lower = ch >= 'a' && ch <= 'z';
     const digit = ch >= '0' && ch <= '9';
+    const u = ch.charCodeAt(0);
 
     if (mode === 'bold') {
-      if (upper) return toCodePoint(BOLD_UPPER, ch.charCodeAt(0) - 65);
-      if (lower) return toCodePoint(BOLD_LOWER, ch.charCodeAt(0) - 97);
-      if (digit) return toCodePoint(BOLD_DIGIT, ch.charCodeAt(0) - 48);
+      if (upper) return cp(r.boldUpper, u - 65);
+      if (lower) return cp(r.boldLower, u - 97);
+      if (digit) return cp(r.boldDigit, u - 48);
     }
-
     if (mode === 'italic') {
-      if (upper) return toCodePoint(ITALIC_UPPER, ch.charCodeAt(0) - 65);
-      if (lower) return toCodePoint(ITALIC_LOWER, ch.charCodeAt(0) - 97);
-      // digits unchanged in italic
+      // Serif italic has two missing code-points; use workarounds
+      if (style === 'serif') {
+        if (ch === 'h') return '\u210E';
+        if (ch === 'I') return '\u2110';
+      }
+      if (upper) return cp(r.italicUpper, u - 65);
+      if (lower) return cp(r.italicLower, u - 97);
     }
-
     if (mode === 'boldItalic') {
-      if (upper) return toCodePoint(BOLD_ITALIC_UPPER, ch.charCodeAt(0) - 65);
-      if (lower) return toCodePoint(BOLD_ITALIC_LOWER, ch.charCodeAt(0) - 97);
-      if (digit) return toCodePoint(BOLD_DIGIT, ch.charCodeAt(0) - 48); // bold digits
+      if (upper) return cp(r.boldItalicUpper, u - 65);
+      if (lower) return cp(r.boldItalicLower, u - 97);
+      if (digit) return cp(r.boldDigit, u - 48);
     }
-
-    return ch; // keep spaces, punctuation, etc.
+    return ch;
   }
 
   function convert(text, mode) {
     return [...text].map(ch => convertChar(ch, mode)).join('');
   }
 
-  const input    = document.getElementById('input');
-  const outBold  = document.getElementById('out-bold');
-  const outItalic= document.getElementById('out-italic');
-  const outBoth  = document.getElementById('out-both');
+  // ── DOM refs ──────────────────────────────────────────────────
+  const input     = document.getElementById('input');
+  const outBold   = document.getElementById('out-bold');
+  const outItalic = document.getElementById('out-italic');
+  const outBoth   = document.getElementById('out-both');
+  const toggle    = document.getElementById('toggle');
+  const labelSans = document.getElementById('label-sans');
+  const labelSerif= document.getElementById('label-serif');
 
   function update() {
     const text = input.value;
@@ -228,24 +287,38 @@
     outBoth.textContent   = convert(text, 'boldItalic');
   }
 
-  input.addEventListener('input', update);
-  update(); // run once on load
+  // ── Toggle logic ──────────────────────────────────────────────
+  function setStyle(newStyle) {
+    style = newStyle;
+    const isSerif = style === 'serif';
+    toggle.classList.toggle('serif', isSerif);
+    toggle.setAttribute('aria-checked', isSerif);
+    labelSans.classList.toggle('active', !isSerif);
+    labelSerif.classList.toggle('active', isSerif);
+    update();
+  }
 
-  // Copy buttons
+  toggle.addEventListener('click', () => setStyle(style === 'sansSerif' ? 'serif' : 'sansSerif'));
+  toggle.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle.click(); }});
+  labelSans.addEventListener('click', () => setStyle('sansSerif'));
+  labelSerif.addEventListener('click', () => setStyle('serif'));
+
+  input.addEventListener('input', update);
+  update();
+
+  // ── Copy buttons ──────────────────────────────────────────────
   document.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const target = document.getElementById(btn.dataset.target);
       try {
         await navigator.clipboard.writeText(target.textContent);
         btn.classList.add('copied');
-        // lastChild is the text node " Kopieren"
         btn.lastChild.nodeValue = ' Kopiert!';
         setTimeout(() => {
           btn.classList.remove('copied');
           btn.lastChild.nodeValue = ' Kopieren';
         }, 1800);
       } catch {
-        // fallback
         const range = document.createRange();
         range.selectNode(target);
         window.getSelection().removeAllRanges();
